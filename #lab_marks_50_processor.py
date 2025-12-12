@@ -98,19 +98,20 @@ if menu == "Single Entry":
         st.write(f"Viva → {res['Viva Marks']} marks")
         st.write(f"**Total Marks:** {res['Total Marks']}")
 
+
 # --------------------------- Bulk Upload & Analytics ---------------------------
 else:
     st.header("📥 Bulk Excel Upload + Analytics")
 
     st.markdown("""
-    Upload an Excel file (.xlsx) with columns:
-    - Name
-    - Roll
-    - SAQ
-    - Program 1
-    - Program 2
-    - Execution
-    - Lab Record
+    Upload an Excel file (.xlsx) with these columns:
+    - Name  
+    - Roll  
+    - SAQ  
+    - Program 1  
+    - Program 2  
+    - Execution  
+    - Lab Record  
     - Viva
     """)
 
@@ -137,4 +138,28 @@ else:
         st.download_button(
             label="📥 Download Result Excel",
             data=buffer,
-            file_name="calculated_student_marks._
+            file_name="calculated_student_marks.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+        # ===== Charts =====
+        st.subheader("📈 Performance Charts")
+
+        # Bar chart — Total Marks distribution
+        st.markdown("### 📊 Total Marks Distribution")
+        fig1, ax1 = plt.subplots()
+        ax1.bar(final["Name"], final["Total Marks"], color="teal")
+        ax1.set_xlabel("Students")
+        ax1.set_ylabel("Total Marks")
+        ax1.set_xticklabels(final["Name"], rotation=45, ha='right')
+        st.pyplot(fig1)
+
+        # Optional: pie chart for grade ranges
+        st.markdown("### 🟡 Grade Distribution")
+        bins = [0, 20, 35, 50, 70, 100]
+        labels = ["0–20", "21–35", "36–50", "51–70", "71–100"]
+        grades = pd.cut(final["Total Marks"], bins=bins, labels=labels, right=True)
+        fig2, ax2 = plt.subplots()
+        grades.value_counts().plot.pie(autopct="%1.1f%%", ax=ax2)
+        ax2.set_ylabel("")
+        st.pyplot(fig2)
