@@ -1,8 +1,4 @@
-## lab_marks_processor.py
-# app.py (fixed): Streamlit Lab Marks Processor
-# - No st.button() calls inside a form
-# - Uses st.session_state keys for form fields so buttons outside the form can prefill them
-
+# labs-marks.py (fixed with on_click callbacks)
 import streamlit as st
 import pandas as pd
 from io import BytesIO
@@ -10,7 +6,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="Lab Marks Processor", layout="centered")
 
-# Helper functions (same logic)
+# Helper functions
 def attendance_marks(att):
     try:
         att = float(att)
@@ -65,66 +61,97 @@ st.write(
 tab1, tab2 = st.tabs(["Single Student (Interactive)", "Batch (Excel upload/download)"])
 
 # Ensure session_state keys exist with safe defaults
-if "name" not in st.session_state:
-    st.session_state["name"] = ""
-if "roll" not in st.session_state:
-    st.session_state["roll"] = ""
-if "attendance" not in st.session_state:
+defaults = {
+    "name": "",
+    "roll": "",
+    "attendance": 75.0,
+    "execution": "yes",
+    "labrecord": "yes",
+}
+for k, v in defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
+
+# Callbacks
+def fill_sample():
+    # Runs as widget callback — safe to modify session_state here
+    st.session_state["name"] = "Chandana M"
+    st.session_state["roll"] = "CE203"
     st.session_state["attendance"] = 75.0
-if "execution" not in st.session_state:
-    st.session_state["execution"] = "yes"
-if "labrecord" not in st.session_state:
+    st.session_state["execution"] = "no"
     st.session_state["labrecord"] = "yes"
+    # Optional: trigger a rerun so UI immediately shows updated inputs
+    st.experimental_rerun()
+
+def show_sample_report():
+    # Show a sample computed report directly (this callback modifies nothing)
+    name = "Anita K"
+    roll = "CE201"
+    attendance = 92.0
+    execution = "yes"
+    labrecord = "yes"
+    a_mark = attendance_marks(attendance)
+    e_mark = execution_marks(execution)
+    r_mark = labrecord_marks(labrecord)
+    total = a_mark + e_mark + r_mark
+    st.session_state["_sample_report"] = {
+        "name": name, "roll": roll, "attendance": attendance,
+        "execution": execution, "labrecord": labrecord,
+        "a_mark": a_mark, "e_mark": e_mark, "r_mark": r_mark, "total": total
+    }
 
 with tab1:
     st.header("Single Student — Interactive")
 
-    # Form (only form-compatible widgets inside)
     with st.form("single_form"):
         c1, c2 = st.columns([2, 1])
         with c1:
             st.text_input("Student Name", key="name")
             st.text_input("Roll Number", key="roll")
         with c2:
-            st.number_input("Attendance (%)", min_value=0.0, max_value=100.0, value=st.session_state["attendance"], step=0.1, format="%.1f", key="attendance")
-            st.selectbox("Execution status", options=["yes", "badoutput", "no"], index=["yes","badoutput","no"].index(st.session_state["execution"]), key="execution")
-            st.radio("Lab record submitted?", options=["yes", "no"], index=["yes","no"].index(st.session_state["labrecord"]), key="labrecord")
+            st.number_input(
+                "Attendance (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=st.session_state["attendance"],
+                step=0.1,
+                format="%.1f",
+                key="attendance"
+            )
+            st.selectbox(
+                "Execution status",
+                options=["yes", "badoutput", "no"],
+                index=["yes", "badoutput", "no"].index(st.session_state["execution"]),
+                key="execution"
+            )
+            st.radio(
+                "Lab record submitted?",
+                options=["yes", "no"],
+                index=["yes", "no"].index(st.session_state["labrecord"]),
+                key="labrecord"
+            )
         submitted = st.form_submit_button("Calculate Marks")
 
-    # Buttons OUTSIDE the form (allowed)
+    # Buttons outside form — use on_click callbacks
     colA, colB = st.columns(2)
     with colA:
-        if st.button("Fill sample values"):
-            # Prefill the form fields using session_state; form inputs will reflect these values
-            st.session_state["name"] = "Chandana M"
-            st.session_state["roll"] = "CE203"
-            st.session_state["attendance"] = 75.0
-            st.session_state["execution"] = "no"
-            st.session_state["labrecord"] = "yes"
-            # Do not automatically submit; user can inspect and click Calculate
+        st.button("Fill sample values", on_click=fill_sample)
     with colB:
-        if st.button("Sample Demo Report"):
-            # Show a sample computed report directly (without modifying form)
-            name = "Anita K"
-            roll = "CE201"
-            attendance = 92.0
-            execution = "yes"
-            labrecord = "yes"
-            a_mark = attendance_marks(attendance)
-            e_mark = execution_marks(execution)
-            r_mark = labrecord_marks(labrecord)
-            total = a_mark + e_mark + r_mark
-            st.subheader("Sample Student Report")
-            st.markdown(
-                f"**Name:** {name}  \n"
-                f"**Roll No:** {roll}  \n"
-                f"**Attendance:** {attendance:.1f}% → **{a_mark}** marks  \n"
-                f"**Execution:** {execution} → **{e_mark}** marks  \n"
-                f"**Lab Record:** {labrecord} → **{r_mark}** marks  \n"
-                f"**Total Marks (out of 25):** **{total}**"
-            )
+        st.button("Sample Demo Report", on_click=show_sample_report)
 
-    # If user submitted the form, compute and show
+    # If sample report prepared in session_state by callback, display it
+    if "_sample_report" in st.session_state:
+        sr = st.session_state.pop("_sample_report")
+        st.subheader("Sample Student Report")
+        st.markdown(
+            f"**Name:** {sr['name']}  \n"
+            f"**Roll No:** {sr['roll']}  \n"
+            f"**Attendance:** {sr['attendance']:.1f}% → **{sr['a_mark']}** marks  \n"
+            f"**Execution:** {sr['execution']} → **{sr['e_mark']}** marks  \n"
+            f"**Lab Record:** {sr['labrecord']} → **{sr['r_mark']}** marks  \n"
+            f"**Total Marks (out of 25):** **{sr['total']}**"
+        )
+
     if submitted:
         name = st.session_state.get("name", "")
         roll = st.session_state.get("roll", "")
