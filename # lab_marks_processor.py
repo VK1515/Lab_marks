@@ -1,9 +1,7 @@
-# lab_marks_processor.py
-"""
-Streamlit Lab Marks Processor
-- Interactive single-student calculator
-- Batch Excel upload -> processed Excel download
-"""
+## lab_marks_processor.py
+# app.py (fixed): Streamlit Lab Marks Processor
+# - No st.button() calls inside a form
+# - Uses st.session_state keys for form fields so buttons outside the form can prefill them
 
 import streamlit as st
 import pandas as pd
@@ -12,7 +10,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="Lab Marks Processor", layout="centered")
 
-# --- helper functions (business logic) ---
+# Helper functions (same logic)
 def attendance_marks(att):
     try:
         att = float(att)
@@ -43,14 +41,13 @@ def execution_marks(exe):
 def labrecord_marks(rec):
     return 5 if str(rec).strip().lower() == "yes" else 0
 
-def compute_row_marks(row):
-    a = attendance_marks(row.get("Attendance"))
-    e = execution_marks(row.get("Execution"))
-    r = labrecord_marks(row.get("LabRecord"))
-    return a, e, r, ( (a or 0) + e + r )
+def to_excel_bytes(df):
+    buffer = BytesIO()
+    df.to_excel(buffer, index=False, engine="openpyxl")
+    buffer.seek(0)
+    return buffer
 
 def dataframe_with_marks(df):
-    # expects columns: Name, Roll, Attendance, Execution, LabRecord
     df = df.copy()
     df["AttendanceMarks"] = df["Attendance"].apply(attendance_marks)
     df["ExecutionMarks"] = df["Execution"].apply(execution_marks)
@@ -58,13 +55,7 @@ def dataframe_with_marks(df):
     df["TotalMarks"] = df["AttendanceMarks"].fillna(0) + df["ExecutionMarks"] + df["RecordMarks"]
     return df
 
-def to_excel_bytes(df):
-    buffer = BytesIO()
-    df.to_excel(buffer, index=False, engine="openpyxl")
-    buffer.seek(0)
-    return buffer
-
-# --- UI ---
+# Page UI
 st.title("Lab Marks Processor")
 st.write(
     "Calculate lab marks (out of 25) from attendance, execution status and lab record. "
@@ -73,34 +64,74 @@ st.write(
 
 tab1, tab2 = st.tabs(["Single Student (Interactive)", "Batch (Excel upload/download)"])
 
+# Ensure session_state keys exist with safe defaults
+if "name" not in st.session_state:
+    st.session_state["name"] = ""
+if "roll" not in st.session_state:
+    st.session_state["roll"] = ""
+if "attendance" not in st.session_state:
+    st.session_state["attendance"] = 75.0
+if "execution" not in st.session_state:
+    st.session_state["execution"] = "yes"
+if "labrecord" not in st.session_state:
+    st.session_state["labrecord"] = "yes"
+
 with tab1:
     st.header("Single Student — Interactive")
-    with st.form("single_form", clear_on_submit=False):
+
+    # Form (only form-compatible widgets inside)
+    with st.form("single_form"):
         c1, c2 = st.columns([2, 1])
         with c1:
-            name = st.text_input("Student Name", "")
-            roll = st.text_input("Roll Number", "")
+            st.text_input("Student Name", key="name")
+            st.text_input("Roll Number", key="roll")
         with c2:
-            attendance = st.number_input("Attendance (%)", min_value=0.0, max_value=100.0, value=75.0, step=0.1, format="%.1f")
-            execution = st.selectbox("Execution status", options=["yes", "badoutput", "no"], index=0)
-            labrecord = st.radio("Lab record submitted?", options=["yes", "no"], index=0)
+            st.number_input("Attendance (%)", min_value=0.0, max_value=100.0, value=st.session_state["attendance"], step=0.1, format="%.1f", key="attendance")
+            st.selectbox("Execution status", options=["yes", "badoutput", "no"], index=["yes","badoutput","no"].index(st.session_state["execution"]), key="execution")
+            st.radio("Lab record submitted?", options=["yes", "no"], index=["yes","no"].index(st.session_state["labrecord"]), key="labrecord")
         submitted = st.form_submit_button("Calculate Marks")
-        st.button("Sample Demo", key="single_sample", help="Fill form with a sample student")
-        # handle Sample Demo (non-form button)
-        if st.session_state.get("single_sample", False):
-            # populate sample values (one-shot)
-            st.session_state["single_sample"] = False
-        # If user pressed the Sample Demo button, prefill via st.experimental_set_query_params is heavy; instead show sample result directly
-        if st.button("Fill sample values"):
-            name = "Chandana M"
-            roll = "CE203"
-            attendance = 75.0
-            execution = "no"
-            labrecord = "yes"
-            st.experimental_rerun()
 
-    # compute and show result
+    # Buttons OUTSIDE the form (allowed)
+    colA, colB = st.columns(2)
+    with colA:
+        if st.button("Fill sample values"):
+            # Prefill the form fields using session_state; form inputs will reflect these values
+            st.session_state["name"] = "Chandana M"
+            st.session_state["roll"] = "CE203"
+            st.session_state["attendance"] = 75.0
+            st.session_state["execution"] = "no"
+            st.session_state["labrecord"] = "yes"
+            # Do not automatically submit; user can inspect and click Calculate
+    with colB:
+        if st.button("Sample Demo Report"):
+            # Show a sample computed report directly (without modifying form)
+            name = "Anita K"
+            roll = "CE201"
+            attendance = 92.0
+            execution = "yes"
+            labrecord = "yes"
+            a_mark = attendance_marks(attendance)
+            e_mark = execution_marks(execution)
+            r_mark = labrecord_marks(labrecord)
+            total = a_mark + e_mark + r_mark
+            st.subheader("Sample Student Report")
+            st.markdown(
+                f"**Name:** {name}  \n"
+                f"**Roll No:** {roll}  \n"
+                f"**Attendance:** {attendance:.1f}% → **{a_mark}** marks  \n"
+                f"**Execution:** {execution} → **{e_mark}** marks  \n"
+                f"**Lab Record:** {labrecord} → **{r_mark}** marks  \n"
+                f"**Total Marks (out of 25):** **{total}**"
+            )
+
+    # If user submitted the form, compute and show
     if submitted:
+        name = st.session_state.get("name", "")
+        roll = st.session_state.get("roll", "")
+        attendance = st.session_state.get("attendance", 0)
+        execution = st.session_state.get("execution", "no")
+        labrecord = st.session_state.get("labrecord", "no")
+
         a_mark = attendance_marks(attendance)
         if a_mark is None:
             st.error("Attendance value invalid. Must be 0–100.")
@@ -119,7 +150,6 @@ with tab1:
                 f"**Total Marks (out of 25):** **{total}**"
             )
 
-            # prepare single-row DataFrame and offer download
             result_df = pd.DataFrame([{
                 "Name": name,
                 "Roll": roll,
@@ -141,11 +171,9 @@ with tab1:
 
 with tab2:
     st.header("Batch processing — upload an Excel and download results")
-    st.markdown("Upload an Excel file with the exact columns: **Name, Roll, Attendance, Execution, LabRecord** (case-sensitive).")
     uploaded = st.file_uploader("Upload Excel file", type=["xlsx", "xls", "csv"])
 
     if uploaded is not None:
-        # try reading into DataFrame
         try:
             if uploaded.name.lower().endswith(".csv"):
                 df = pd.read_csv(uploaded)
@@ -170,13 +198,11 @@ with tab2:
             st.success("Computation complete — preview results below.")
             st.dataframe(out_df.head(20))
 
-            # show simple validation summary
             invalid_att = out_df[out_df["AttendanceMarks"].isna()]
             if not invalid_att.empty:
                 st.warning(f"{len(invalid_att)} rows had invalid attendance values (AttendanceMarks blank). Check those rows.")
                 st.dataframe(invalid_att[["Name", "Roll", "Attendance"]].head(10))
 
-            # download button for results in Excel
             st.download_button(
                 "Download results as Excel",
                 data=to_excel_bytes(out_df),
@@ -201,7 +227,6 @@ with tab2:
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
 
-# Footer / notes
 st.markdown("---")
 st.markdown(
     "**Notes:**\n\n"
@@ -209,4 +234,3 @@ st.markdown(
     "- `LabRecord` accepted values: `yes` or `no`.\n"
     "- Attendance must be numeric (0–100). Rows with invalid attendance will still be included but AttendanceMarks will be blank."
 )
-
