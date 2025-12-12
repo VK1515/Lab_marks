@@ -1,109 +1,173 @@
 #lab_marks_50_processor.py
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
 from io import BytesIO
 
-st.title("📊 Student Marks Calculator")
+st.title("📊 Student Marks Evaluation System")
 
-# Sidebar menu
-menu = st.sidebar.selectbox("Menu", ["Single Entry", "Bulk Upload"])
+menu = st.sidebar.selectbox("Menu", ["Single Entry", "Bulk Upload & Analytics"])
 
-# Function to calculate total marks
-def calculate_marks(row):
-    # record
-    b = 5 if str(row.get('Record','')).lower() == 'y' else 0
+# Function to calculate one row of marks
+def compute_marks(row):
+    # Attendance marks
+    att = float(row.get("Attendance %", 0))
+    att_marks = 5 if att >= 35 else 0
 
-    # SAQ marks
-    saq_marks = int(row.get('SAQ', 0)) * 2
+    # SAQ marks (2 each)
+    saq = int(row.get("SAQ", 0))
+    saq_marks = saq * 2
 
     # Program 1
-    p1 = str(row.get('Program 1', '4'))
-    p1_score = {'1':10, '2':7, '3':5, '4':0}.get(p1, 0)
+    p1 = str(row.get("Program 1", '4'))
+    p1_marks = {'1':10, '2':7, '3':5, '4':0}.get(p1, 0)
 
     # Program 2
-    p2 = str(row.get('Program 2', '4'))
-    p2_score = {'1':10, '2':7, '3':5, '4':0}.get(p2, 0)
+    p2 = str(row.get("Program 2", '4'))
+    p2_marks = {'1':10, '2':7, '3':5, '4':0}.get(p2, 0)
 
-    viva = int(row.get('Viva', 0))
+    # Execution
+    execn = str(row.get("Execution", "")).lower()
+    exec_marks = 5 if execn == "yes" else 0
 
-    total = b + saq_marks + p1_score + p2_score + viva
+    # Lab record
+    lab = str(row.get("Lab Record", "")).lower()
+    lab_marks = 5 if lab == "yes" else 0
+
+    # Viva
+    viva = int(row.get("Viva", 0))
+
+    total_score = att_marks + saq_marks + p1_marks + p2_marks + exec_marks + lab_marks + viva
+
     return pd.Series({
-        "Record": b,
+        "Attendance Marks": att_marks,
         "SAQ Marks": saq_marks,
-        "Program1": p1_score,
-        "Program2": p2_score,
-        "Viva": viva,
-        "Total": total
+        "Program1 Marks": p1_marks,
+        "Program2 Marks": p2_marks,
+        "Execution Marks": exec_marks,
+        "Lab Record Marks": lab_marks,
+        "Viva Marks": viva,
+        "Total Marks": total_score
     })
 
+# --------------------------- Single Entry ---------------------------
 if menu == "Single Entry":
-    st.header("Single Student Entry")
+    st.header("👨‍🎓 Single Student Entry")
 
     name = st.text_input("Student Name")
     roll = st.text_input("Roll Number")
 
-    record = st.selectbox("Record Submitted?", ['y','n'])
+    attendance = st.number_input("Attendance %", 0.0, 100.0)
+
     saq = st.number_input("Number of SAQs Answered", 0, 5)
 
-    prog1 = st.selectbox("1st Program", ["1","2","3","4"], format_func=lambda x: 
-                          "1. Perfect (10)" if x=='1' else
-                          "2. Few Errors (7)" if x=='2' else
-                          "3. Many Errors (5)" if x=='3' else
-                          "4. Not Attempted (0)")
-    prog2 = st.selectbox("2nd Program", ["1","2","3","4"], format_func=lambda x: 
-                          "1. Perfect (10)" if x=='1' else
-                          "2. Few Errors (7)" if x=='2' else
-                          "3. Many Errors (5)" if x=='3' else
-                          "4. Not Attempted (0)")
+    prog1 = st.selectbox("Program 1", ["1","2","3","4"],
+                         format_func=lambda x:
+                         "1. Perfect (10)" if x=='1' else
+                         "2. Few Errors (7)" if x=='2' else
+                         "3. Many Errors (5)" if x=='3' else
+                         "4. Not Attempted (0)")
+
+    prog2 = st.selectbox("Program 2", ["1","2","3","4"],
+                         format_func=lambda x:
+                         "1. Perfect (10)" if x=='1' else
+                         "2. Few Errors (7)" if x=='2' else
+                         "3. Many Errors (5)" if x=='3' else
+                         "4. Not Attempted (0)")
+
+    execution = st.selectbox("Execution Successful?", ["yes", "no"])
+
+    lab = st.selectbox("Lab Record Submitted?", ["yes", "no"])
 
     viva = st.number_input("Viva Marks", 0, 15)
 
-    if st.button("Calculate"):
+    if st.button("Generate Report"):
         data = {
-            "Record": record,
+            "Attendance %": attendance,
             "SAQ": saq,
             "Program 1": prog1,
             "Program 2": prog2,
+            "Execution": execution,
+            "Lab Record": lab,
             "Viva": viva
         }
         df = pd.DataFrame([data])
-        result = calculate_marks(df.iloc[0])
+        res = compute_marks(df.iloc[0])
 
-        st.write("### 🧾 Mark Sheet")
+        st.markdown("### 📋 Student Report")
         st.write(f"**Name:** {name}")
-        st.write(f"**Roll:** {roll}")
-        st.write(result.to_frame().T)
+        st.write(f"**Roll No:** {roll}")
+        st.write(f"Attendance: {attendance}% → {res['Attendance Marks']} marks")
+        st.write(f"SAQ: {saq} × 2 → {res['SAQ Marks']} marks")
+        st.write(f"Program 1 → {res['Program1 Marks']} marks")
+        st.write(f"Program 2 → {res['Program2 Marks']} marks")
+        st.write(f"Execution: {execution} → {res['Execution Marks']} marks")
+        st.write(f"Lab Record: {lab} → {res['Lab Record Marks']} marks")
+        st.write(f"Viva → {res['Viva Marks']} marks")
+        st.write(f"**Total Marks (out of 70):** {res['Total Marks']}")
 
-elif menu == "Bulk Upload":
-    st.header("Bulk Excel Upload")
+# --------------------------- Bulk Upload & Analytics ---------------------------
+else:
+    st.header("📥 Bulk Excel Upload + Analytics")
 
-    uploaded_file = st.file_uploader("Upload Excel file with student data", type=["xlsx"])
     st.markdown("""
-    The Excel should have columns:  
-    **Name, Roll, Record (y/n), SAQ, Program 1 (1–4), Program 2 (1–4), Viva**  
+    Upload an Excel file (.xlsx) with columns:
+    - Name
+    - Roll
+    - Attendance %
+    - SAQ
+    - Program 1
+    - Program 2
+    - Execution
+    - Lab Record
+    - Viva
     """)
 
-    if uploaded_file:
-        df = pd.read_excel(uploaded_file)
-        st.write("📥 Uploaded Data")
+    file = st.file_uploader("Select Excel file", type=["xlsx"])
+
+    if file:
+        df = pd.read_excel(file)
+        st.write("📊 Uploaded Data")
         st.dataframe(df)
 
-        # calculate for all
-        results = df.apply(calculate_marks, axis=1)
-        final = pd.concat([df[['Name','Roll']], results], axis=1)
+        # compute marks
+        results = df.apply(compute_marks, axis=1)
+        final = pd.concat([df, results], axis=1)
 
         st.write("✅ Calculated Results")
         st.dataframe(final)
 
-        # Excel download
+        # Download result
         buffer = BytesIO()
-        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
             final.to_excel(writer, index=False, sheet_name="Results")
         buffer.seek(0)
 
         st.download_button(
-            label="📥 Download Results as Excel",
+            label="📥 Download Result Excel",
             data=buffer,
-            file_name="calculated_marks.xlsx",
-            mime="application/vnd.ms-excel"
+            file_name="calculated_student_marks.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
+        # ===== Charts =====
+        st.subheader("📈 Performance Charts")
+
+        # Bar chart — Total Marks distribution
+        st.markdown("### 📊 Total Marks Distribution")
+        fig1, ax1 = plt.subplots()
+        ax1.bar(final["Name"], final["Total Marks"], color="teal")
+        ax1.set_xlabel("Students")
+        ax1.set_ylabel("Total Marks")
+        ax1.set_xticklabels(final["Name"], rotation=45, ha='right')
+        st.pyplot(fig1)
+
+        # Optional: grade pie chart
+        st.markdown("### 🟡 Grade Distribution")
+        bins = [0, 20, 35, 50, 70]  # adjust as needed
+        labels = ["<=20", "21–35", "36–50", "51–70"]
+        grades = pd.cut(final["Total Marks"], bins=bins, labels=labels, right=True)
+        fig2, ax2 = plt.subplots()
+        grades.value_counts().plot.pie(autopct="%1.1f%%", ax=ax2)
+        ax2.set_ylabel("")
+        st.pyplot(fig2)
