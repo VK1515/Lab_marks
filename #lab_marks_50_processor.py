@@ -22,10 +22,6 @@ def compute_marks(row):
     p2 = str(row.get("Program 2", '4'))
     p2_marks = {'1':10, '2':7, '3':5, '4':0}.get(p2, 0)
 
-    # Execution
-    execn = str(row.get("Execution", "")).lower()
-    exec_marks = 5 if execn == "yes" else 0
-
     # Lab record
     lab = str(row.get("Lab Record", "")).lower()
     lab_marks = 5 if lab == "yes" else 0
@@ -33,18 +29,16 @@ def compute_marks(row):
     # Viva
     viva = int(row.get("Viva", 0))
 
-    total_score = saq_marks + p1_marks + p2_marks + exec_marks + lab_marks + viva
+    total_score = saq_marks + p1_marks + p2_marks + lab_marks + viva
 
     return pd.Series({
         "SAQ Marks": saq_marks,
         "Program1 Marks": p1_marks,
         "Program2 Marks": p2_marks,
-        "Execution Marks": exec_marks,
         "Lab Record Marks": lab_marks,
         "Viva Marks": viva,
         "Total Marks": total_score
     })
-
 
 # --------------------------- Single Entry ---------------------------
 if menu == "Single Entry":
@@ -69,8 +63,6 @@ if menu == "Single Entry":
                          "3. Many Errors (5)" if x=='3' else
                          "4. Not Attempted (0)")
 
-    execution = st.selectbox("Execution Successful?", ["yes", "no"])
-
     lab = st.selectbox("Lab Record Submitted?", ["yes", "no"])
 
     viva = st.number_input("Viva Marks", 0, 15)
@@ -80,7 +72,6 @@ if menu == "Single Entry":
             "SAQ": saq,
             "Program 1": prog1,
             "Program 2": prog2,
-            "Execution": execution,
             "Lab Record": lab,
             "Viva": viva
         }
@@ -93,11 +84,9 @@ if menu == "Single Entry":
         st.write(f"SAQ: {saq} × 2 → {res['SAQ Marks']} marks")
         st.write(f"Program 1 → {res['Program1 Marks']} marks")
         st.write(f"Program 2 → {res['Program2 Marks']} marks")
-        st.write(f"Execution: {execution} → {res['Execution Marks']} marks")
         st.write(f"Lab Record: {lab} → {res['Lab Record Marks']} marks")
         st.write(f"Viva → {res['Viva Marks']} marks")
         st.write(f"**Total Marks:** {res['Total Marks']}")
-
 
 # --------------------------- Bulk Upload & Analytics ---------------------------
 else:
@@ -105,13 +94,12 @@ else:
 
     st.markdown("""
     Upload an Excel file (.xlsx) with these columns:
-    - Name  
-    - Roll  
-    - SAQ  
-    - Program 1  
-    - Program 2  
-    - Execution  
-    - Lab Record  
+    - Name
+    - Roll
+    - SAQ
+    - Program 1
+    - Program 2
+    - Lab Record
     - Viva
     """)
 
