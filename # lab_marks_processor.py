@@ -1,4 +1,4 @@
-# labs-marks.py (fixed with on_click callbacks)
+# Lab Marks Processor.py (fixed — removed experimental_rerun)
 import streamlit as st
 import pandas as pd
 from io import BytesIO
@@ -80,11 +80,10 @@ def fill_sample():
     st.session_state["attendance"] = 75.0
     st.session_state["execution"] = "no"
     st.session_state["labrecord"] = "yes"
-    # Optional: trigger a rerun so UI immediately shows updated inputs
-    st.experimental_rerun()
+    # No experimental_rerun() — not required and may cause AttributeError in some environments
 
 def show_sample_report():
-    # Show a sample computed report directly (this callback modifies nothing)
+    # Prepare sample report data in session state for display in main flow
     name = "Anita K"
     roll = "CE201"
     attendance = 92.0
