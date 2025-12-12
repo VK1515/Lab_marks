@@ -8,12 +8,8 @@ st.title("📊 Student Marks Evaluation System")
 
 menu = st.sidebar.selectbox("Menu", ["Single Entry", "Bulk Upload & Analytics"])
 
-# Function to calculate one row of marks
+# Function to calculate marks for each row
 def compute_marks(row):
-    # Attendance marks
-    att = float(row.get("Attendance %", 0))
-    att_marks = 5 if att >= 35 else 0
-
     # SAQ marks (2 each)
     saq = int(row.get("SAQ", 0))
     saq_marks = saq * 2
@@ -37,10 +33,9 @@ def compute_marks(row):
     # Viva
     viva = int(row.get("Viva", 0))
 
-    total_score = att_marks + saq_marks + p1_marks + p2_marks + exec_marks + lab_marks + viva
+    total_score = saq_marks + p1_marks + p2_marks + exec_marks + lab_marks + viva
 
     return pd.Series({
-        "Attendance Marks": att_marks,
         "SAQ Marks": saq_marks,
         "Program1 Marks": p1_marks,
         "Program2 Marks": p2_marks,
@@ -50,14 +45,13 @@ def compute_marks(row):
         "Total Marks": total_score
     })
 
+
 # --------------------------- Single Entry ---------------------------
 if menu == "Single Entry":
     st.header("👨‍🎓 Single Student Entry")
 
     name = st.text_input("Student Name")
     roll = st.text_input("Roll Number")
-
-    attendance = st.number_input("Attendance %", 0.0, 100.0)
 
     saq = st.number_input("Number of SAQs Answered", 0, 5)
 
@@ -83,7 +77,6 @@ if menu == "Single Entry":
 
     if st.button("Generate Report"):
         data = {
-            "Attendance %": attendance,
             "SAQ": saq,
             "Program 1": prog1,
             "Program 2": prog2,
@@ -97,14 +90,13 @@ if menu == "Single Entry":
         st.markdown("### 📋 Student Report")
         st.write(f"**Name:** {name}")
         st.write(f"**Roll No:** {roll}")
-        st.write(f"Attendance: {attendance}% → {res['Attendance Marks']} marks")
         st.write(f"SAQ: {saq} × 2 → {res['SAQ Marks']} marks")
         st.write(f"Program 1 → {res['Program1 Marks']} marks")
         st.write(f"Program 2 → {res['Program2 Marks']} marks")
         st.write(f"Execution: {execution} → {res['Execution Marks']} marks")
         st.write(f"Lab Record: {lab} → {res['Lab Record Marks']} marks")
         st.write(f"Viva → {res['Viva Marks']} marks")
-        st.write(f"**Total Marks (out of 70):** {res['Total Marks']}")
+        st.write(f"**Total Marks:** {res['Total Marks']}")
 
 # --------------------------- Bulk Upload & Analytics ---------------------------
 else:
@@ -114,7 +106,6 @@ else:
     Upload an Excel file (.xlsx) with columns:
     - Name
     - Roll
-    - Attendance %
     - SAQ
     - Program 1
     - Program 2
@@ -146,28 +137,4 @@ else:
         st.download_button(
             label="📥 Download Result Excel",
             data=buffer,
-            file_name="calculated_student_marks.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-        # ===== Charts =====
-        st.subheader("📈 Performance Charts")
-
-        # Bar chart — Total Marks distribution
-        st.markdown("### 📊 Total Marks Distribution")
-        fig1, ax1 = plt.subplots()
-        ax1.bar(final["Name"], final["Total Marks"], color="teal")
-        ax1.set_xlabel("Students")
-        ax1.set_ylabel("Total Marks")
-        ax1.set_xticklabels(final["Name"], rotation=45, ha='right')
-        st.pyplot(fig1)
-
-        # Optional: grade pie chart
-        st.markdown("### 🟡 Grade Distribution")
-        bins = [0, 20, 35, 50, 70]  # adjust as needed
-        labels = ["<=20", "21–35", "36–50", "51–70"]
-        grades = pd.cut(final["Total Marks"], bins=bins, labels=labels, right=True)
-        fig2, ax2 = plt.subplots()
-        grades.value_counts().plot.pie(autopct="%1.1f%%", ax=ax2)
-        ax2.set_ylabel("")
-        st.pyplot(fig2)
+            file_name="calculated_student_marks._
